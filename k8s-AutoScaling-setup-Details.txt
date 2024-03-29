@@ -1,0 +1,95 @@
+Kubernetes Setups of various Resources
+======================================
+
+Autoscaling in K8S:
+
+1. Vertical Pod Autoscaling    =>  increasing the size of server.
+2. Horizontal Pod Autoscaling  =>  creating another pod of same size.
+
+one sw neeed to be installed to collect AutoScaling Metrics = Metrics-Server
+
+$ git clone https://github.com/MithunTechnologiesDevOps/metrics-server.git
+$ cd metrics-server
+$ kubectl apply -f deploy/1.8+/
+
+Deleting Metrics-SERVER:
+kubectl delete service/metrics-server -n  kube-system
+kubectl delete deployment.apps/metrics-server  -n  kube-system
+kubectl delete apiservices.apiregistration.k8s.io v1beta1.metrics.k8s.io
+kubectl delete clusterroles.rbac.authorization.k8s.io system:aggregated-metrics-reader
+
+LIVENESS PROBE:
+The liveness probe ensures that an application within a container is live and operational based on a specified test. 
+The kubelet uses liveness probes to know when to restart a container. 
+Applications that error or transition to broken states will be picked up and can be fixed in many instances by being restarted.
+httpGet
+sh
+tcp
+
+READINESS PROBE:
+A readiness probe indicates whether applications running in a container are ready to receive traffic. 
+If so, Services in Kubernetes can send traffic to the pod, and if not, the endpoint controller removes the pod from all services.
+
+Horizontal Pod AutoScaling:
+===========================
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hpadeployment
+  labels:
+    name: hpadeployment
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      name: hpapod
+  template:
+    metadata:
+      labels:
+        name: hpapod
+    spec:
+      containers:
+        - name: hpacontainer
+          image: kanidevops02/python-web-app-docker:10
+          ports:
+          - name: http
+            containerPort: 80
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "64Mi"
+            limits:
+              cpu: "100m"
+              memory: "256Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hpaclusterservice
+  labels:
+    name: hpaservice
+spec:
+  ports:
+    - port: 80
+      targetPort: 80
+  selector:
+    name: hpapod
+  type: NodePort
+---
+apiVersion: autoscaling/v2beta1
+kind: HorizontalPodAutoscaler
+metadata:
+  name: hpadeploymentautoscaler
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: hpadeployment
+  minReplicas: 2
+  maxReplicas: 5
+  metrics:
+    - resource:
+        name: cpu
+        targetAverageUtilization: 50
+      type: Resource

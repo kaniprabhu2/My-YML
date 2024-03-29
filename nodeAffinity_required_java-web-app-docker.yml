@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: javawebappdeployment
+spec:
+  replicas: 4
+  selector:
+    matchLabels:
+     app: javawebapp
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: javawebapp
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+            - key: "name"
+            operator: In
+            values:
+            - nodeOne
+      containers:
+      - name: javawebappcontainer
+        image: dockerhandson/java-web-app:4
+        ports:
+        - containerPort: 8080
+        readinessProbe:
+          httpGet:
+            path: /java-web-app
+            port: 8080
+          initialDelaySeconds: 10
+          timeoutSeconds: 10
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /java-web-app
+            port: 8080
+          initialDelaySeconds: 10
+          timeoutSeconds: 10
+          periodSeconds: 10
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "256Mi"
+          limits: 
+            cpu: "250m"
+            memory: "512Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: javawebappsvc
+spec:
+  type: NodePort
+  selector:
+    app: javawebapp
+  ports:
+  - port: 80
+    targetPort: 8080
+
